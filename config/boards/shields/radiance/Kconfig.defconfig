@@ -3,6 +3,9 @@ if SHIELD_RADIANCE
 config ZMK_KEYBOARD_NAME
     default "Radiance"
 
+config ZMK_STUDIO_RPC_ENDPOINT_HTTP
+    default y
+
 if ZMK_DISPLAY
 
 config I2C
