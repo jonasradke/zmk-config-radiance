@@ -44,5 +44,17 @@
             &trans    &trans    &trans              &trans              &trans              &trans            &trans    &trans    &bt BT_PRV &none   &bt BT_NXT
             >;
         };
+
+        extra_layer_1 {
+            status = "reserved";
+        };
+
+        extra_layer_2 {
+            status = "reserved";
+        };
+
+        extra_layer_3 {
+            status = "reserved";
+        };
     };
 };
