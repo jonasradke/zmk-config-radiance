@@ -2,7 +2,7 @@ if SHIELD_RADIANCE_V1 || SHIELD_RADIANCE_V2
 
 config ZMK_KEYBOARD_NAME
     default "Radiance" if SHIELD_RADIANCE_V1
-    default "Radiance ISO" if SHIELD_RADIANCE_V2
+    default "Hannes' Radiance" if SHIELD_RADIANCE_V2
 
 if ZMK_DISPLAY
 

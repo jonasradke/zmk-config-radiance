@@ -1,0 +1,23 @@
+// Encoder scrolling shared by both keymaps. Needs CONFIG_ZMK_POINTING=y.
+// One mouse-wheel notch per encoder detent: &msc moves speed * 16 ms / 1000 per tick,
+// so 80 gives exactly one notch during the 30 ms tap below.
+#define ZMK_POINTING_DEFAULT_SCRL_VAL 80
+#include <dt-bindings/zmk/pointing.h>
+
+/ {
+    behaviors {
+        scroll_encoder: scroll_encoder {
+            compatible = "zmk,behavior-sensor-rotate";
+            #sensor-binding-cells = <0>;
+            bindings = <&msc SCRL_DOWN>, <&msc SCRL_UP>;
+            tap-ms = <30>;
+        };
+
+        hscroll_encoder: hscroll_encoder {
+            compatible = "zmk,behavior-sensor-rotate";
+            #sensor-binding-cells = <0>;
+            bindings = <&msc SCRL_RIGHT>, <&msc SCRL_LEFT>;
+            tap-ms = <30>;
+        };
+    };
+};
