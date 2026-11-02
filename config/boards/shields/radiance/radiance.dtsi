@@ -1,5 +1,6 @@
 // Hardware shared by radiance_v1 and radiance_v2: same PCB wiring, encoders and OLED.
 #include <dt-bindings/zmk/matrix_transform.h>
+#include <dt-bindings/i2c/i2c.h>
 
 / {
     chosen {
@@ -58,6 +59,9 @@ RC(4,0) RC(4,1) RC(4,2)         RC(4,4)         RC(4,6)         RC(4,8)         
 
 &pro_micro_i2c {
     status = "okay";
+    // 400 kHz instead of the 100 kHz default: a redraw then reaches the OLED faster than it
+    // refreshes, so scrolling text no longer tears.
+    clock-frequency = <I2C_BITRATE_FAST>;
 
     oled: ssd1306@3c {
         compatible = "solomon,ssd1306fb";

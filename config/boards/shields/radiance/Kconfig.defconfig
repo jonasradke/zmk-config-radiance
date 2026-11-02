@@ -16,8 +16,9 @@ endif # ZMK_DISPLAY
 
 if LVGL
 
+# Render the whole 128x32 frame in one buffer so a redraw goes out as a single transfer.
 config LV_Z_VDB_SIZE
-    default 64
+    default 100
 
 config LV_DPI_DEF
     default 148

@@ -65,23 +65,16 @@
 #define WPM_POINTS 30
 #define FULL_LEVEL 99
 
-#define FN_PAGE_MS 1400
-
-// Shown one page at a time: pixel-scrolling text tears on the OLED, which has no vsync.
-static const char *const fn_hints[] = {
-    LV_SYMBOL_LEFT " " LV_SYMBOL_RIGHT "  profile",
 #if IS_ENABLED(CONFIG_SHIELD_RADIANCE_V2)
-    LV_SYMBOL_UP " " LV_SYMBOL_DOWN "  page",
+#define FN_HINTS                                                                                   \
+    LV_SYMBOL_LEFT " " LV_SYMBOL_RIGHT " profile    " LV_SYMBOL_UP " " LV_SYMBOL_DOWN              \
+                   " page    Bksp clear    Del USB/BT    Ins boot    Home Studio    End reset    " \
+                   "Y < > |"
+#else
+#define FN_HINTS                                                                                   \
+    LV_SYMBOL_LEFT " " LV_SYMBOL_RIGHT " profile    Bksp clear    Del USB/BT    Ins boot    "      \
+                   "Home Studio    End reset"
 #endif
-    "Bksp  clear",
-    "Del  USB/BT",
-    "Ins  boot",
-    "Home  Studio",
-    "End  reset",
-#if IS_ENABLED(CONFIG_SHIELD_RADIANCE_V2)
-    "Y < > |",
-#endif
-};
 
 /* ---------------------------------------------------------------- shared state */
 
@@ -224,7 +217,6 @@ static lv_obj_t *volume_box, *volume_icon, *volume_bar, *volume_label;
 static lv_obj_t *splash;
 
 static enum bottom_mode shown_mode = MODE_NONE;
-static int64_t fn_since;
 static int wpm_history[WPM_POINTS];
 static uint32_t ticks;
 
@@ -377,11 +369,6 @@ static void status_tick(lv_timer_t *timer) {
         set_text(toast_label, s.toast);
     } else if (mode == MODE_NORMAL) {
         update_normal(&s);
-    } else {
-        if (mode != shown_mode) {
-            fn_since = now;
-        }
-        set_text(fn_label, fn_hints[((now - fn_since) / FN_PAGE_MS) % ARRAY_SIZE(fn_hints)]);
     }
     if (mode != shown_mode) {
         set_hidden(volume_box, mode != MODE_VOLUME);
@@ -541,10 +528,10 @@ lv_obj_t *zmk_display_status_screen() {
 
     // bottom: Fn cheat sheet
     fn_label = make_label(screen, &lv_font_montserrat_12);
-    lv_label_set_long_mode(fn_label, LV_LABEL_LONG_CLIP);
+    lv_label_set_long_mode(fn_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
     lv_obj_set_width(fn_label, 128);
-    lv_obj_set_style_text_align(fn_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-    lv_label_set_text_static(fn_label, fn_hints[0]);
+    lv_obj_set_style_anim_speed(fn_label, 30, LV_PART_MAIN);
+    lv_label_set_text_static(fn_label, FN_HINTS);
     lv_obj_set_pos(fn_label, 0, 17);
     lv_obj_add_flag(fn_label, LV_OBJ_FLAG_HIDDEN);
 
