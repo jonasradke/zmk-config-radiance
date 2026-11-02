@@ -1,3 +1,8 @@
 config RADIANCE_DISPLAY_ON_USB
     bool "Blank the display on idle only while running on battery"
     depends on ZMK_DISPLAY && ZMK_USB && !ZMK_DISPLAY_BLANK_ON_IDLE
+
+config RADIANCE_ENCODER
+    bool "Interrupt-decoded driver for alps,ec11 encoders (replaces ZMK's EC11 driver)"
+    default y
+    depends on DT_HAS_ALPS_EC11_ENABLED && GPIO && SENSOR && !EC11

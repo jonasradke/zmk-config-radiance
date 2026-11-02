@@ -1,2 +1,3 @@
+target_sources_ifdef(CONFIG_RADIANCE_ENCODER app PRIVATE src/encoder.c)
 target_sources_ifdef(CONFIG_RADIANCE_DISPLAY_ON_USB app PRIVATE src/display_usb_awake.c)
 target_sources_ifdef(CONFIG_ZMK_DISPLAY_STATUS_SCREEN_CUSTOM app PRIVATE src/status_screen.c)
