@@ -9,8 +9,10 @@
  *
  * Top: output (USB, or Bluetooth profile with a dot: filled = connected, hollow = not
  * connected, blinking = ready to pair), held modifiers, battery (fill animates while charging).
- * The battery is only shown when CONFIG_ZMK_BATTERY_REPORTING is on, so a keyboard without a
- * battery turns reporting off in its .conf and gets neither a fake level on screen nor on the host.
+ * Battery detection: without USB the keyboard must be running on a battery, so the level is
+ * shown. On USB a level below FULL_LEVEL means a battery is charging, so the level is shown with
+ * the charging sweep. On USB at FULL_LEVEL or above there is either no battery (the charger then
+ * reads as full) or a full one; in both cases a bolt "on USB power" icon replaces the gauge.
  * Bottom, by priority:
  *   1. volume bar for 1.5 s after a volume/mute key (estimated, see below)
  *   2. short message for 1.3 s (profile, USB/Bluetooth, Caps Lock)
@@ -61,6 +63,7 @@
 #define STARTUP_QUIET_MS 3000 // no messages for the connection events while booting
 #define VOLUME_STEP 2
 #define WPM_POINTS 30
+#define FULL_LEVEL 99
 
 #if IS_ENABLED(CONFIG_SHIELD_RADIANCE_V2)
 #define FN_HINTS                                                                                   \
@@ -205,7 +208,7 @@ static lv_color_t fg, bg;
 
 static lv_obj_t *output_label, *status_dot, *mod_labels[4];
 #if SHOW_BATTERY
-static lv_obj_t *battery_label, *battery_fill;
+static lv_obj_t *battery_box, *battery_label, *battery_fill, *usb_power_icon;
 #endif
 static lv_obj_t *normal_box, *layer_label, *wpm_label, *wpm_chart;
 static lv_chart_series_t *wpm_series;
@@ -286,6 +289,13 @@ static void update_top(const struct status_state *s) {
     }
 
 #if SHOW_BATTERY
+    bool gauge = !s->usb_powered || s->battery < FULL_LEVEL;
+    set_hidden(battery_box, !gauge);
+    set_hidden(usb_power_icon, gauge);
+    if (!gauge) {
+        return;
+    }
+
     snprintf(text, sizeof(text), "%d%%", s->battery);
     set_text(battery_label, text);
     int level = s->battery;
@@ -450,26 +460,35 @@ lv_obj_t *zmk_display_status_screen() {
     }
 
 #if SHOW_BATTERY
-    lv_obj_t *battery_outline = plain_obj(screen);
+    battery_box = plain_obj(screen);
+    lv_obj_set_size(battery_box, 70, 13);
+    lv_obj_align(battery_box, LV_ALIGN_TOP_RIGHT, 0, 0);
+
+    lv_obj_t *battery_outline = plain_obj(battery_box);
     lv_obj_set_size(battery_outline, 15, 8);
-    lv_obj_set_pos(battery_outline, 110, 2);
+    lv_obj_set_pos(battery_outline, 52, 2);
     lv_obj_set_style_border_color(battery_outline, fg, LV_PART_MAIN);
     lv_obj_set_style_border_width(battery_outline, 1, LV_PART_MAIN);
 
-    lv_obj_t *battery_nub = plain_obj(screen);
+    lv_obj_t *battery_nub = plain_obj(battery_box);
     lv_obj_set_size(battery_nub, 2, 4);
-    lv_obj_set_pos(battery_nub, 125, 4);
+    lv_obj_set_pos(battery_nub, 67, 4);
     lv_obj_set_style_bg_opa(battery_nub, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_bg_color(battery_nub, fg, LV_PART_MAIN);
 
-    battery_fill = plain_obj(screen);
+    battery_fill = plain_obj(battery_box);
     lv_obj_set_size(battery_fill, 0, 4);
-    lv_obj_set_pos(battery_fill, 112, 4);
+    lv_obj_set_pos(battery_fill, 54, 4);
     lv_obj_set_style_bg_opa(battery_fill, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_bg_color(battery_fill, fg, LV_PART_MAIN);
 
-    battery_label = make_label(screen, &lv_font_montserrat_12);
+    battery_label = make_label(battery_box, &lv_font_montserrat_12);
     lv_obj_align(battery_label, LV_ALIGN_TOP_RIGHT, -21, -1);
+
+    usb_power_icon = make_label(screen, &lv_font_montserrat_12);
+    lv_label_set_text_static(usb_power_icon, LV_SYMBOL_CHARGE);
+    lv_obj_align(usb_power_icon, LV_ALIGN_TOP_RIGHT, 0, -1);
+    lv_obj_add_flag(usb_power_icon, LV_OBJ_FLAG_HIDDEN);
 #endif
 
     // dotted divider
