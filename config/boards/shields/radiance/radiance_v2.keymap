@@ -3,10 +3,31 @@
 #include <dt-bindings/zmk/bt.h>
 #include <dt-bindings/zmk/outputs.h>
 
+// One mouse-wheel notch per encoder detent: &msc moves speed * 16 ms / 1000 per tick,
+// so 80 gives exactly one notch during the 30 ms tap below.
+#define ZMK_POINTING_DEFAULT_SCRL_VAL 80
+#include <dt-bindings/zmk/pointing.h>
+
 // ISO-DE layout: keycodes are positional (US names), set the OS keyboard layout to German.
 // e.g. &kp Y sends "Z", &kp MINUS sends "ß", &kp NUHS sends "#", &kp NUBS sends "<".
 
 / {
+    behaviors {
+        scroll_encoder: scroll_encoder {
+            compatible = "zmk,behavior-sensor-rotate";
+            #sensor-binding-cells = <0>;
+            bindings = <&msc SCRL_DOWN>, <&msc SCRL_UP>;
+            tap-ms = <30>;
+        };
+
+        hscroll_encoder: hscroll_encoder {
+            compatible = "zmk,behavior-sensor-rotate";
+            #sensor-binding-cells = <0>;
+            bindings = <&msc SCRL_RIGHT>, <&msc SCRL_LEFT>;
+            tap-ms = <30>;
+        };
+    };
+
     sensors: sensors {
         compatible = "zmk,keymap-sensors";
         sensors = <&encoder_1 &encoder_2>;
@@ -19,7 +40,7 @@
         0 {
             display-name = "Default";
 
-            sensor-bindings = <&inc_dec_kp PAGE_DOWN PAGE_UP &inc_dec_kp C_VOLUME_UP C_VOLUME_DOWN>;
+            sensor-bindings = <&scroll_encoder &inc_dec_kp C_VOLUME_UP C_VOLUME_DOWN>;
 
             //  Esc  1  2  3  4  5  6  7  8  9  0  ß  ´  Bksp Bksp Ins
             //  Tab  Q  W  E  R  T  Z  U  I  O  P  Ü  +  Enter Del  Enc1
@@ -38,7 +59,7 @@
         fn_layer {
             display-name = "Function";
 
-            sensor-bindings = <&inc_dec_kp PAGE_DOWN PAGE_UP &inc_dec_kp C_VOLUME_UP C_VOLUME_DOWN>;
+            sensor-bindings = <&hscroll_encoder &inc_dec_kp C_VOLUME_UP C_VOLUME_DOWN>;
 
             // Fn+Esc = ^ (GRAVE), Fn+Y = < (Shift: >, AltGr: |) since the board has no <> key
             bindings = <

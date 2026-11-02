@@ -1,11 +1,10 @@
+// Hardware shared by radiance_v1 and radiance_v2: same PCB wiring, encoders and OLED.
 #include <dt-bindings/zmk/matrix_transform.h>
-#include "radiance-layouts.dtsi"
 
 / {
     chosen {
         zephyr,display = &oled;
         zmk,kscan = &kscan0;
-        zmk,physical-layout = &radiance_physical_layout;
     };
 
     encoder_1: encoder_1 {

@@ -1,0 +1,3 @@
+config RADIANCE_DISPLAY_ON_USB
+    bool "Blank the display on idle only while running on battery"
+    depends on ZMK_DISPLAY && ZMK_USB && !ZMK_DISPLAY_BLANK_ON_IDLE

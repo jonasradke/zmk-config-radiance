@@ -1,2 +1,5 @@
-config SHIELD_RADIANCE
-    def_bool $(shields_list_contains,radiance)
+config SHIELD_RADIANCE_V1
+    def_bool $(shields_list_contains,radiance_v1)
+
+config SHIELD_RADIANCE_V2
+    def_bool $(shields_list_contains,radiance_v2)

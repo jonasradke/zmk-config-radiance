@@ -1,0 +1,4 @@
+name: zmk-config-radiance
+build:
+  cmake: .
+  kconfig: Kconfig

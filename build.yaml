@@ -18,7 +18,13 @@
 #
 ---
 include:
+  # Original Radiance (old keymap)
   - board: nice_nano_v2
-    shield: radiance
+    shield: radiance_v1
+    snippet: zmk-usb-logging studio-rpc-usb-uart
+    cmake-args: -DCONFIG_ZMK_STUDIO=y
+  # Radiance ISO-DE
+  - board: nice_nano_v2
+    shield: radiance_v2
     snippet: zmk-usb-logging studio-rpc-usb-uart
     cmake-args: -DCONFIG_ZMK_STUDIO=y

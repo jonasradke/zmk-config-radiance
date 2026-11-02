@@ -1,0 +1,8 @@
+#include "radiance.dtsi"
+#include "radiance_v1-layouts.dtsi"
+
+/ {
+    chosen {
+        zmk,physical-layout = &radiance_physical_layout;
+    };
+};
