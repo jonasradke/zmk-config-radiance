@@ -116,8 +116,8 @@ static void refresh_state(void) {
         show_toast(endpoint.transport == ZMK_TRANSPORT_USB ? "USB" : "Bluetooth");
     } else if (endpoint.transport == ZMK_TRANSPORT_BLE &&
                endpoint.ble.profile_index != state.endpoint.ble.profile_index) {
-        char text[16];
-        snprintf(text, sizeof(text), "Profile %d", endpoint.ble.profile_index + 1);
+        char text[sizeof(state.toast)];
+        snprintf(text, sizeof(text), "Profile %u", (uint8_t)(endpoint.ble.profile_index + 1));
         show_toast(text);
     }
 
