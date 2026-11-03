@@ -285,7 +285,8 @@ static void update_top(const struct status_state *s) {
         set_hidden(mod_labels[i], !held);
         if (held) {
             lv_obj_set_pos(mod_labels[i], x, 1);
-            x += 11;
+            lv_obj_update_layout(mod_labels[i]);
+            x += lv_obj_get_width(mod_labels[i]); // letters differ in width, so badges touch
         }
     }
 
