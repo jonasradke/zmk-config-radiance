@@ -63,6 +63,7 @@
 #define STARTUP_QUIET_MS 3000 // no messages for the connection events while booting
 #define VOLUME_STEP 2
 #define WPM_POINTS 30
+#define WPM_TEXT_W 24 // "199" in Montserrat 12 plus a gap
 #define FULL_LEVEL 99
 
 #if IS_ENABLED(CONFIG_SHIELD_RADIANCE_V2)
@@ -512,7 +513,7 @@ lv_obj_t *zmk_display_status_screen() {
     wpm_chart = lv_chart_create(normal_box);
     lv_obj_remove_style_all(wpm_chart);
     lv_obj_set_size(wpm_chart, WPM_POINTS, 13);
-    lv_obj_align(wpm_chart, LV_ALIGN_RIGHT_MID, 0, 0);
+    lv_obj_align(wpm_chart, LV_ALIGN_RIGHT_MID, -WPM_TEXT_W, 0); // room for up to 3 digits
     lv_chart_set_type(wpm_chart, LV_CHART_TYPE_LINE);
     lv_chart_set_point_count(wpm_chart, WPM_POINTS);
     lv_chart_set_div_line_count(wpm_chart, 0, 0);
@@ -524,7 +525,7 @@ lv_obj_t *zmk_display_status_screen() {
 
     wpm_label = make_label(normal_box, &lv_font_montserrat_12);
     lv_label_set_text_static(wpm_label, "0");
-    lv_obj_align(wpm_label, LV_ALIGN_RIGHT_MID, -(WPM_POINTS + 3), 0);
+    lv_obj_align(wpm_label, LV_ALIGN_RIGHT_MID, 0, 0);
 
     // bottom: Fn cheat sheet
     fn_label = make_label(screen, &lv_font_montserrat_12);
