@@ -18,13 +18,15 @@
 #
 ---
 include:
-  # Original Radiance (old keymap)
+  # Original Radiance (old keymap) -> radiance-original.uf2
   - board: nice_nano_v2
     shield: radiance_v1
     snippet: zmk-usb-logging studio-rpc-usb-uart
     cmake-args: -DCONFIG_ZMK_STUDIO=y
-  # Radiance ISO-DE
+    artifact-name: radiance-original
+  # Hannes' Radiance, ISO-DE -> radiance-hannes-iso-de.uf2
   - board: nice_nano_v2
     shield: radiance_v2
     snippet: zmk-usb-logging studio-rpc-usb-uart
     cmake-args: -DCONFIG_ZMK_STUDIO=y
+    artifact-name: radiance-hannes-iso-de
