@@ -20,6 +20,12 @@
  *   4. layer name (inverted while Caps Lock is on), WPM and a WPM graph
  * A splash with the keyboard name is shown for 1.8 s at startup.
  *
+ * WPM is measured here rather than by ZMK's counter, which recalculates once a second over a
+ * window that resets every 5 s and so jumps in steps. Only keys that type a character count
+ * (letters, digits, punctuation, Space, Enter), over a sliding 5 s window kept in 50 ms buckets:
+ * WPM = characters in the last 5 s / 5 per word, per minute. A light smoothing pass hides the
+ * 2.4 WPM step each key press adds.
+ *
  * The host never reports its volume to the keyboard, so the volume is an estimate: every
  * volume key moves it by VOLUME_STEP (one key press on Windows). Turning to 0 % or 100 %
  * brings it back in sync, since both sides stop there.
@@ -40,7 +46,6 @@
 #include <zmk/hid_indicators.h>
 #include <zmk/keymap.h>
 #include <zmk/usb.h>
-#include <zmk/wpm.h>
 
 #define SHOW_BATTERY IS_ENABLED(CONFIG_ZMK_BATTERY_REPORTING)
 #if SHOW_BATTERY
@@ -62,7 +67,13 @@
 #define VOLUME_SHOW_MS 1500
 #define STARTUP_QUIET_MS 3000 // no messages for the connection events while booting
 #define VOLUME_STEP 2
-#define WPM_POINTS 30
+#define WPM_POINTS 40      // one point per pixel; fits right of "Default" even with Caps Lock
+#define WPM_SAMPLE_MS 250  // scroll one pixel every 250 ms: 40 points cover the last 10 s
+#define WPM_WINDOW_MS 5000 // WPM counts the characters typed in this window
+#define WPM_BUCKETS (WPM_WINDOW_MS / TICK_MS)
+#define WPM_SMOOTH_S 0.4f  // time constant that hides the step each key press adds
+#define WPM_MIN_RANGE 60   // graph height never scales below this many WPM
+#define CHARS_PER_WORD 5
 #define WPM_TEXT_W 24 // "199" in Montserrat 12 plus a gap
 #define FULL_LEVEL 99
 
@@ -94,6 +105,7 @@ struct status_state {
     int64_t volume_until;
     int64_t toast_until;
     char toast[16];
+    uint32_t key_presses; // character key presses since boot, for WPM
 };
 
 // Written by the event listener (system work queue), read by the LVGL timer (display queue).
@@ -140,11 +152,28 @@ static void set_caps_lock(bool on) {
     state.caps_lock = on;
 }
 
+// Keys that type a character, for WPM: A-Z, 1-0, Enter, Space, the punctuation keys (on ISO-DE
+// also the umlauts and the # key) and the extra ISO key left of Z (< > |). Backspace, Tab, Esc,
+// arrows, navigation and function keys don't count.
+static bool types_character(uint32_t keycode) {
+    return (keycode >= HID_USAGE_KEY_KEYBOARD_A && keycode <= HID_USAGE_KEY_KEYBOARD_RETURN_ENTER) ||
+           (keycode >= HID_USAGE_KEY_KEYBOARD_SPACEBAR &&
+            keycode <= HID_USAGE_KEY_KEYBOARD_SLASH_AND_QUESTION_MARK) ||
+           keycode == HID_USAGE_KEY_KEYBOARD_NON_US_BACKSLASH_AND_PIPE;
+}
+
 static void handle_keycode(const struct zmk_keycode_state_changed *ev) {
     if (ev->usage_page == HID_USAGE_KEY && ev->keycode >= HID_USAGE_KEY_KEYBOARD_LEFTCONTROL &&
         ev->keycode <= HID_USAGE_KEY_KEYBOARD_RIGHT_GUI) {
         uint8_t bit = BIT(ev->keycode - HID_USAGE_KEY_KEYBOARD_LEFTCONTROL);
         state.mods = ev->state ? (state.mods | bit) : (state.mods & ~bit);
+        return;
+    }
+
+    if (ev->usage_page == HID_USAGE_KEY) {
+        if (ev->state && types_character(ev->keycode)) {
+            state.key_presses++;
+        }
         return;
     }
 
@@ -219,6 +248,13 @@ static lv_obj_t *splash;
 
 static enum bottom_mode shown_mode = MODE_NONE;
 static int wpm_history[WPM_POINTS];
+static uint16_t wpm_buckets[WPM_BUCKETS]; // character presses per 50 ms over the last 5 s
+static int wpm_window_sum;
+static int64_t wpm_newest_bucket = -1; // absolute bucket number (uptime / TICK_MS)
+static uint32_t wpm_seen_presses;
+static float wpm_shown;
+static int64_t wpm_last_ms;
+static float wpm_chart_max = WPM_MIN_RANGE;
 static uint32_t ticks;
 
 static void set_text(lv_obj_t *label, const char *text) {
@@ -333,21 +369,70 @@ static void update_volume(const struct status_state *s) {
     }
 }
 
-static void sample_wpm(void) {
-    int wpm = zmk_wpm_get_state();
-    int max = 60;
+// Runs every tick. Buckets are indexed by uptime, so a late or skipped tick still drops exactly
+// the presses older than 5 s.
+static int update_wpm(uint32_t presses, int64_t now) {
+    int64_t bucket = now / TICK_MS;
+    if (wpm_newest_bucket < 0) {
+        wpm_newest_bucket = bucket;
+        wpm_seen_presses = presses;
+        wpm_last_ms = now;
+        return 0;
+    }
+
+    // empty the buckets that slid out of the window
+    int64_t advance = MIN(bucket - wpm_newest_bucket, (int64_t)WPM_BUCKETS);
+    for (int64_t i = 1; i <= advance; i++) {
+        int slot = (int)((wpm_newest_bucket + i) % WPM_BUCKETS);
+        wpm_window_sum -= wpm_buckets[slot];
+        wpm_buckets[slot] = 0;
+    }
+    wpm_newest_bucket = MAX(wpm_newest_bucket, bucket);
+
+    uint32_t added = presses - wpm_seen_presses;
+    wpm_seen_presses = presses;
+    wpm_buckets[wpm_newest_bucket % WPM_BUCKETS] += added;
+    wpm_window_sum += added;
+
+    float measured = wpm_window_sum * (60000.0f / WPM_WINDOW_MS) / CHARS_PER_WORD;
+    float dt = (now - wpm_last_ms) / 1000.0f;
+    wpm_last_ms = now;
+    wpm_shown += (measured - wpm_shown) * MIN(1.0f, dt / WPM_SMOOTH_S);
+
+    int wpm = (int)(wpm_shown + 0.5f);
     char text[8];
+    snprintf(text, sizeof(text), "%d", wpm);
+    set_text(wpm_label, text);
+    return wpm;
+}
+
+static void sample_wpm(int wpm) {
+    int max = WPM_MIN_RANGE;
+    int peak = wpm;
+    for (int i = 0; i < WPM_POINTS; i++) {
+        peak = MAX(peak, wpm_history[i]);
+    }
+    // While idle the graph is a flat line at 0 that looks the same after scrolling, so skip the
+    // update: it would only redraw the chart and send it to the screen for nothing.
+    if (peak == 0 && wpm_chart_max == WPM_MIN_RANGE) {
+        return;
+    }
 
     memmove(wpm_history, wpm_history + 1, sizeof(wpm_history) - sizeof(wpm_history[0]));
     wpm_history[WPM_POINTS - 1] = wpm;
     for (int i = 0; i < WPM_POINTS; i++) {
         max = MAX(max, wpm_history[i]);
     }
-    lv_chart_set_range(wpm_chart, LV_CHART_AXIS_PRIMARY_Y, 0, max);
+    // grow at once so the line never clips, shrink gradually so the graph doesn't jump
+    if (max > wpm_chart_max) {
+        wpm_chart_max = max;
+    } else if (wpm_chart_max - max < 0.5f) {
+        wpm_chart_max = max; // land exactly, so the idle check above can match
+    } else {
+        wpm_chart_max += (max - wpm_chart_max) * 0.05f;
+    }
+    lv_chart_set_range(wpm_chart, LV_CHART_AXIS_PRIMARY_Y, 0, (lv_coord_t)(wpm_chart_max + 0.5f));
     lv_chart_set_next_value(wpm_chart, wpm_series, wpm);
-
-    snprintf(text, sizeof(text), "%d", wpm);
-    set_text(wpm_label, text);
 }
 
 static void status_tick(lv_timer_t *timer) {
@@ -380,8 +465,9 @@ static void status_tick(lv_timer_t *timer) {
         shown_mode = mode;
     }
 
-    if (ticks % (1000 / TICK_MS) == 0) {
-        sample_wpm();
+    int wpm = update_wpm(s.key_presses, now);
+    if (ticks % (WPM_SAMPLE_MS / TICK_MS) == 0) {
+        sample_wpm(wpm);
     }
 }
 
